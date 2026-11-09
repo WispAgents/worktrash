@@ -48,14 +48,31 @@ fn age(path: &Path, days: u64) {
         files.push(gd.join(f));
     }
     for f in files {
-        if let Ok(file) = std::fs::File::options()
-            .write(true)
-            .open(&f)
-            .or_else(|_| std::fs::File::open(&f))
-        {
-            let _ = file.set_modified(t);
-        }
+        let file = open_for_times(&f).unwrap_or_else(|e| panic!("open {}: {e}", f.display()));
+        file.set_modified(t)
+            .unwrap_or_else(|e| panic!("set mtime {}: {e}", f.display()));
     }
+}
+
+/// A handle that may change a file's or a folder's times.
+#[cfg(not(windows))]
+fn open_for_times(p: &Path) -> std::io::Result<std::fs::File> {
+    std::fs::File::options()
+        .write(true)
+        .open(p)
+        .or_else(|_| std::fs::File::open(p))
+}
+
+/// Windows opens a folder only with FILE_FLAG_BACKUP_SEMANTICS, and needs write access to set times.
+#[cfg(windows)]
+fn open_for_times(p: &Path) -> std::io::Result<std::fs::File> {
+    use std::os::windows::fs::OpenOptionsExt;
+    const FILE_FLAG_BACKUP_SEMANTICS: u32 = 0x0200_0000;
+    const FILE_WRITE_ATTRIBUTES: u32 = 0x0100;
+    std::fs::File::options()
+        .access_mode(FILE_WRITE_ATTRIBUTES)
+        .custom_flags(FILE_FLAG_BACKUP_SEMANTICS)
+        .open(p)
 }
 
 fn worktrash(root: &Path, extra: &[&str]) -> (String, bool) {

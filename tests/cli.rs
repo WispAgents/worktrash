@@ -25,7 +25,11 @@ fn tmp(name: &str) -> PathBuf {
     let d = std::env::temp_dir().join(format!("worktrash-test-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&d);
     std::fs::create_dir_all(&d).expect("temp dir");
-    std::fs::canonicalize(&d).expect("canon")
+    let c = std::fs::canonicalize(&d).expect("canon");
+    // git can't use Windows' verbatim `\\?\C:\…` form
+    let s = c.to_string_lossy();
+    s.strip_prefix(r"\\?\")
+        .map_or_else(|| c.clone(), PathBuf::from)
 }
 
 fn commit(dir: &Path, file: &str, text: &str) {
@@ -192,7 +196,7 @@ fn clean_removes_only_what_holds_nothing_and_keeps_every_branch() {
     assert!(list.contains("folder gone"), "{list}");
     let line = |name: &str| {
         list.lines()
-            .find(|l| l.ends_with(&format!("/{name}")))
+            .find(|l| l.ends_with(&format!("/{name}")) || l.ends_with(&format!("\\{name}")))
             .unwrap_or_default()
             .to_string()
     };

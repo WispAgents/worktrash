@@ -347,6 +347,41 @@ pub fn dirs_from_dotgit_file(dotgit: &Path) -> Option<(PathBuf, PathBuf)> {
     Some((gitdir, canon(&common)))
 }
 
+/// The real path, in a form git accepts: on Windows `canonicalize` returns verbatim `\\?\C:\…` paths,
+/// which git can't use, so the prefix comes off again (`\\?\UNC\host\share` → `\\host\share`).
 pub fn canon(p: &Path) -> PathBuf {
-    std::fs::canonicalize(p).unwrap_or_else(|_| p.to_path_buf())
+    std::fs::canonicalize(p).map_or_else(|_| p.to_path_buf(), |c| plain(&c))
+}
+
+pub fn plain(p: &Path) -> PathBuf {
+    let s = p.to_string_lossy();
+    if let Some(rest) = s.strip_prefix(r"\\?\UNC\") {
+        PathBuf::from(format!(r"\\{rest}"))
+    } else if let Some(rest) = s.strip_prefix(r"\\?\") {
+        PathBuf::from(rest)
+    } else {
+        p.to_path_buf()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::plain;
+    use std::path::{Path, PathBuf};
+
+    #[test]
+    fn verbatim_windows_paths_lose_their_prefix() {
+        assert_eq!(
+            plain(Path::new(r"\\?\C:\Users\me\x")),
+            PathBuf::from(r"C:\Users\me\x")
+        );
+        assert_eq!(
+            plain(Path::new(r"\\?\UNC\host\share\x")),
+            PathBuf::from(r"\\host\share\x")
+        );
+        assert_eq!(
+            plain(Path::new("/Users/me/x")),
+            PathBuf::from("/Users/me/x")
+        );
+    }
 }

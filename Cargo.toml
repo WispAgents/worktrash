@@ -1,0 +1,19 @@
+[package]
+name = "worktrash"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "Find the git worktrees your coding agents left behind, see how much disk they eat, and remove the merged ones."
+license = "MIT"
+repository = "https://github.com/WispAgents/worktrash"
+homepage = "https://github.com/WispAgents/worktrash"
+readme = "README.md"
+keywords = ["git", "worktree", "cleanup", "agents", "cli"]
+categories = ["command-line-utilities", "development-tools"]
+
+[dependencies]
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true

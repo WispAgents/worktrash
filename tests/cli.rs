@@ -63,7 +63,7 @@ fn open_for_times(p: &Path) -> std::io::Result<std::fs::File> {
         .or_else(|_| std::fs::File::open(p))
 }
 
-/// Windows opens a folder only with FILE_FLAG_BACKUP_SEMANTICS, and needs write access to set times.
+/// Windows opens a folder only with `FILE_FLAG_BACKUP_SEMANTICS`, and needs write access to set times.
 #[cfg(windows)]
 fn open_for_times(p: &Path) -> std::io::Result<std::fs::File> {
     use std::os::windows::fs::OpenOptionsExt;
